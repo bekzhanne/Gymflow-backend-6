@@ -1,0 +1,332 @@
+openapi: 3.0.3
+info:
+  title: GymFlow API
+  description: |
+    GymFlow — Monolithic REST API for fitness club management.
+    Covers authentication, users, classes, bookings, payments, notifications and admin analytics.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    AuthRegisterRequest:
+      type: object
+      required: [email, password, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        role:
+          type: string
+          enum: [member, trainer, admin]
+    AuthLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        expires_in:
+          type: integer
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+        role:
+          type: string
+          enum: [member, trainer, admin]
+        membership:
+          type: string
+          enum: [basic, premium, vip]
+        active:
+          type: boolean
+    Class:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        trainer_id:
+          type: integer
+        capacity:
+          type: integer
+        starts_at:
+          type: string
+          format: date-time
+    CreateClassRequest:
+      type: object
+      required: [title, capacity, starts_at]
+      properties:
+        title:
+          type: string
+        capacity:
+          type: integer
+        starts_at:
+          type: string
+          format: date-time
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        class_id:
+          type: integer
+        user_id:
+          type: integer
+        status:
+          type: string
+          enum: [booked, waitlist, cancelled]
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        amount:
+          type: number
+          format: float
+        status:
+          type: string
+          enum: [created, paid, failed]
+        created_at:
+          type: string
+          format: date-time
+    CreatePaymentRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+          format: float
+    AdminStats:
+      type: object
+      properties:
+        users:
+          type: integer
+        classes:
+          type: integer
+        bookings:
+          type: integer
+        payments:
+          type: integer
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [System]
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+  /api/v1/auth/register:
+    post:
+      summary: Register user
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegisterRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/login:
+    post:
+      summary: Login
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Unauthorized
+
+  /api/v1/users/me:
+    get:
+      summary: Get current user profile
+      tags: [Users]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /api/v1/classes:
+    get:
+      summary: List classes
+      tags: [Classes]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Class'
+    post:
+      summary: Create class (Trainer/Admin)
+      tags: [Classes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClassRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Class'
+
+  /api/v1/bookings:
+    post:
+      summary: Book class
+      tags: [Bookings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [class_id]
+              properties:
+                class_id:
+                  type: integer
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+
+  /api/v1/bookings/{id}/cancel:
+    post:
+      summary: Cancel booking
+      tags: [Bookings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+
+  /api/v1/payments:
+    post:
+      summary: Create payment
+      tags: [Payments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+    get:
+      summary: Payment history
+      tags: [Payments]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Payment'
+
+  /api/v1/admin/stats:
+    get:
+      summary: Admin dashboard statistics
+      tags: [Admin]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStats'
