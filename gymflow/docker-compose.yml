@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: gymflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gymflow
+      POSTGRES_PASSWORD: gymflow
+      POSTGRES_DB: gymflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: gymflow-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  adminer:
+    image: adminer
+    container_name: gymflow-adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+
+volumes:
+  pgdata:
